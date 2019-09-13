@@ -103,6 +103,9 @@ export class MockDebugSession extends LoggingDebugSession {
 		// make VS Code to show a 'step back' button
 		response.body.supportsStepBack = true;
 
+		// we implement setVariableRequest
+		response.body.supportsSetVariable = true;
+
 		// make VS Code to support data breakpoints
 		response.body.supportsDataBreakpoints = true;
 
@@ -245,6 +248,18 @@ export class MockDebugSession extends LoggingDebugSession {
 		response.body = {
 			variables: variables
 		};
+		this.sendResponse(response);
+	}
+    protected async setVariableRequest(response: DebugProtocol.SetVariableResponse, args: DebugProtocol.SetVariableArguments): Promise<void> {
+
+		// To show issue #80464, fail every attempt
+		response.success = false;
+		response.message = 'Not yet implemented';
+
+		// Workaround for https://github.com/microsoft/vscode/issues/80464#issuecomment-530713561
+		if (!response.success) {
+			throw new Error(response.message);
+		}
 		this.sendResponse(response);
 	}
 
