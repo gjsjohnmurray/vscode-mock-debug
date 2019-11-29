@@ -13,10 +13,6 @@ import { basename } from 'path';
 import { MockRuntime, MockBreakpoint } from './mockRuntime';
 const { Subject } = require('await-notify');
 
-function timeout(ms) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 /**
  * This interface describes the mock-debug specific launch attributes
  * (which are not part of the Debug Adapter Protocol).
@@ -45,7 +41,6 @@ export class MockDebugSession extends LoggingDebugSession {
 	private _configurationDone = new Subject();
 
 	private _cancelationTokens = new Map<number, boolean>();
-	private _isLongrunning = new Map<number, boolean>();
 
 	/**
 	 * Creates a new debug adapter that is used for one debug session.
@@ -237,78 +232,9 @@ export class MockDebugSession extends LoggingDebugSession {
 
 	protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
 
-		const variables: DebugProtocol.Variable[] = [];
+		response.success = false;
+		response.message = 'Unable to fetch variables';
 
-		if (this._isLongrunning.get(args.variablesReference)) {
-			// long running
-
-			if (request) {
-				this._cancelationTokens.set(request.seq, false);
-			}
-
-			for (let i = 0; i < 100; i++) {
-				await timeout(1000);
-				variables.push({
-					name: `i_${i}`,
-					type: "integer",
-					value: `${i}`,
-					variablesReference: 0
-				});
-				if (request && this._cancelationTokens.get(request.seq)) {
-					break;
-				}
-			}
-
-			if (request) {
-				this._cancelationTokens.delete(request.seq);
-			}
-
-		} else {
-
-			const id = this._variableHandles.get(args.variablesReference);
-
-			if (id) {
-				variables.push({
-					name: id + "_i",
-					type: "integer",
-					value: "123",
-					variablesReference: 0
-				});
-				variables.push({
-					name: id + "_f",
-					type: "float",
-					value: "3.14",
-					variablesReference: 0
-				});
-				variables.push({
-					name: id + "_s",
-					type: "string",
-					value: "hello world",
-					variablesReference: 0
-				});
-				variables.push({
-					name: id + "_o",
-					type: "object",
-					value: "Object",
-					variablesReference: this._variableHandles.create(id + "_o")
-				});
-
-				// cancelation support for long running requests
-				const nm = id + "_long_running";
-				const ref = this._variableHandles.create(id + "_lr");
-				variables.push({
-					name: nm,
-					type: "object",
-					value: "Object",
-					variablesReference: ref
-				});
-				this._isLongrunning.set(ref, true);
-			}
-		}
-
-		response.body = {
-			variables: variables
-		};
 		this.sendResponse(response);
 	}
 
